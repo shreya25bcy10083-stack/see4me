@@ -1,0 +1,20 @@
+# Environment variables
+.env
+
+# Python Virtual Environment
+venv/
+ENV/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Flask upload temp files
+tmp/
+uploads/

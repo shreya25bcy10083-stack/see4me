@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>See4Me - AI Visual Accessibility Assistant</title>
+    <meta name="description" content="An AI-powered visual accessibility assistant designed for visually impaired users. Upload or capture an image to receive concise descriptions read aloud.">
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <!-- Accessible Skip Link for Keyboard & Screen Reader Users -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
+    <!-- ARIA Live Announcer for Immediate Screen Reader Feedback -->
+    <div id="liveAnnouncer" class="visually-hidden" aria-live="polite" aria-atomic="true" role="status"></div>
+
+    <header class="app-header">
+        <div class="header-container">
+            <div class="brand">
+                <span class="brand-icon" aria-hidden="true">👁️</span>
+                <div class="brand-titles">
+                    <h1 class="brand-title">See4Me</h1>
+                    <p class="brand-sub">AI Visual Accessibility Assistant</p>
+                </div>
+            </div>
+            
+            <!-- High Contrast Mode Toggle -->
+            <button type="button" id="contrastToggle" class="btn btn-toggle" aria-pressed="false">
+                <span aria-hidden="true">◐</span>
+                <span id="contrastToggleText">High Contrast Mode</span>
+            </button>
+        </div>
+    </header>
+
+    <main id="main-content" class="main-content" tabindex="-1">
+        
+        <!-- Application Introduction & Purpose -->
+        <section class="intro-card" aria-labelledby="intro-heading">
+            <h2 id="intro-heading" class="sr-only">About See4Me</h2>
+            <p class="intro-text">
+                Upload or capture an image and See4Me will describe important visual information and read it aloud for you.
+            </p>
+        </section>
+
+        <!-- Dynamic Global Error / Notification Alert Box -->
+        <div id="errorAlert" class="alert alert-danger hidden" role="alert" aria-live="assertive" tabindex="-1">
+            <span class="alert-icon" aria-hidden="true">⚠️</span>
+            <span id="errorMessage" class="alert-text"></span>
+            <button type="button" id="dismissErrorBtn" class="alert-close" aria-label="Dismiss error notification">✕</button>
+        </div>
+
+        <!-- Primary Action Section: Upload or Use Camera -->
+        <section class="actions-section" aria-label="Image Selection Controls">
+            <div class="primary-controls">
+                
+                <!-- File Upload Control -->
+                <div class="file-upload-wrapper">
+                    <input type="file" id="imageInput" accept="image/png, image/jpeg, image/webp, image/bmp" class="visually-hidden">
+                    <label for="imageInput" id="uploadLabel" class="btn btn-primary btn-large" tabindex="0" role="button" aria-controls="previewSection">
+                        <span class="btn-icon" aria-hidden="true">📁</span>
+                        <span>Upload Image</span>
+                    </label>
+                </div>
+
+                <!-- Camera Activation Control -->
+                <button type="button" id="cameraBtn" class="btn btn-secondary btn-large">
+                    <span class="btn-icon" aria-hidden="true">📷</span>
+                    <span>Use Camera</span>
+                </button>
+                
+            </div>
+        </section>
+
+        <!-- Camera Capture Modal / Overlay View -->
+        <section id="cameraModal" class="camera-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="cameraHeading">
+            <div class="camera-card">
+                <div class="camera-header">
+                    <h2 id="cameraHeading">Device Camera</h2>
+                    <button type="button" id="closeCameraBtn" class="btn btn-outline" aria-label="Close Camera Interface">
+                        <span aria-hidden="true">✕</span> Close Camera
+                    </button>
+                </div>
+                <p id="cameraInstructions" class="camera-instructions">
+                    Point your camera at the scene or object you wish to describe, then activate Capture Photo.
+                </p>
+
+                <div class="video-container">
+                    <video id="cameraVideo" autoplay playsinline aria-label="Live camera feed preview"></video>
+                    <canvas id="cameraCanvas" class="hidden"></canvas>
+                </div>
+
+                <div class="camera-controls">
+                    <button type="button" id="captureBtn" class="btn btn-primary btn-large">
+                        <span class="btn-icon" aria-hidden="true">📸</span>
+                        <span>Capture Photo</span>
+                    </button>
+                    <button type="button" id="switchCameraBtn" class="btn btn-secondary btn-large hidden">
+                        <span class="btn-icon" aria-hidden="true">🔄</span>
+                        <span>Switch Camera</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Image Preview and Analysis Trigger Section -->
+        <section id="previewSection" class="preview-card hidden" aria-labelledby="previewHeading">
+            <h2 id="previewHeading" class="section-title">Selected Image</h2>
+            <div class="image-wrapper">
+                <img id="imagePreview" src="" alt="Selected preview image awaiting AI analysis" />
+            </div>
+
+            <div class="analyze-controls">
+                <button type="button" id="analyzeBtn" class="btn btn-accent btn-large" disabled>
+                    <span class="btn-icon" aria-hidden="true">⚡</span>
+                    <span>Analyze Image</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- Loading Indicator for Processing State -->
+        <div id="loadingIndicator" class="loading-card hidden" role="status" aria-live="polite">
+            <div class="spinner-large" aria-hidden="true"></div>
+            <p class="loading-text">Analyzing image with AI. Please wait...</p>
+        </div>
+
+        <!-- AI Description Output & Speech Controls Section -->
+        <section id="resultSection" class="result-card hidden" aria-labelledby="resultHeading" tabindex="-1">
+            <h2 id="resultHeading" class="section-title">AI Description</h2>
+
+            <div id="descriptionContainer" class="description-box" role="region" aria-label="AI Accessibility Description" tabindex="0">
+                <div id="descriptionText" class="description-text"></div>
+            </div>
+
+            <!-- Text-To-Speech & Follow-up Actions -->
+            <div class="speech-controls" aria-label="Speech and Voice Controls">
+                <button type="button" id="speakBtn" class="btn btn-success btn-large">
+                    <span class="btn-icon" aria-hidden="true">🔊</span>
+                    <span>Read Aloud</span>
+                </button>
+                <button type="button" id="stopBtn" class="btn btn-danger btn-large" disabled>
+                    <span class="btn-icon" aria-hidden="true">⏹</span>
+                    <span>Stop Speaking</span>
+                </button>
+                <button type="button" id="resetBtn" class="btn btn-outline btn-large">
+                    <span class="btn-icon" aria-hidden="true">🔄</span>
+                    <span>Analyze Another Image</span>
+                </button>
+            </div>
+
+            <p id="speechStatus" class="speech-status-msg" aria-live="polite" role="status"></p>
+        </section>
+
+    </main>
+
+    <!-- Footer with Privacy Statement and Disclaimer -->
+    <footer class="app-footer">
+        <div class="footer-container">
+            <p class="footer-notice">
+                🔒 <strong>Privacy:</strong> Images are used only for analysis and are not permanently stored by See4Me.
+            </p>
+            <p class="footer-disclaimer">
+                ⚠️ <strong>Disclaimer:</strong> AI descriptions may be inaccurate. Do not rely on See4Me alone for navigation or safety-critical decisions.
+            </p>
+            <p class="footer-meta">
+                Open-source accessibility app powered by <strong>Qwen2.5-VL-3B-Instruct</strong> via Hugging Face.
+            </p>
+        </div>
+    </footer>
+
+    <!-- Main JavaScript Logic -->
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
